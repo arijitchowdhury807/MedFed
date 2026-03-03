@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { connectWallet } from "./lib/wallet";
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
+import { trainRound } from "./services/api";
 import { Navbar } from './components/Navbar';
 import { Scene3D } from './components/Scene3D';
 import { MetricCards } from './components/MetricCards';
@@ -10,7 +12,7 @@ import { BlockchainActivity } from './components/BlockchainActivity';
 import { Hospital, BlockchainTransaction } from './types';
 
 function App() {
-  const [isConnected, setIsConnected] = useState(false);
+  // const [isConnected, setIsConnected] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
   const [currentRound, setCurrentRound] = useState(12);
@@ -18,143 +20,76 @@ function App() {
   const [totalUpdates, setTotalUpdates] = useState(156);
   const [blockchainConfirmations, setBlockchainConfirmations] = useState(48);
 
-  const [hospitals, setHospitals] = useState<Hospital[]>([
-    {
-      id: '1',
-      name: 'Hospital A',
-      accuracy: 85.2,
-      samples: 12500,
-      contribution: 28.5,
-      lastUpdateHash: '0x7f3a...b92c',
-      status: 'synced',
-      wallet: '0x1234...5678',
-    },
-    {
-      id: '2',
-      name: 'Hospital B',
-      accuracy: 83.7,
-      samples: 9800,
-      contribution: 22.3,
-      lastUpdateHash: '0x9e2c...4d1f',
-      status: 'synced',
-      wallet: '0x8765...4321',
-    },
-    {
-      id: '3',
-      name: 'Hospital C',
-      accuracy: 89.1,
-      samples: 15200,
-      contribution: 34.6,
-      lastUpdateHash: '0x4b8a...7e3d',
-      status: 'synced',
-      wallet: '0xabcd...ef01',
-    },
-    {
-      id: '4',
-      name: 'Hospital D',
-      accuracy: 82.4,
-      samples: 7600,
-      contribution: 17.3,
-      lastUpdateHash: '0x2c5f...9a1b',
-      status: 'synced',
-      wallet: '0x2468...1357',
-    },
-    {
-      id: '5',
-      name: 'Hospital E',
-      accuracy: 86.8,
-      samples: 11400,
-      contribution: 25.9,
-      lastUpdateHash: '0x6d9e...3f2a',
-      status: 'synced',
-      wallet: '0x9876...5432',
-    },
-  ]);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
 
-  const [transactions, setTransactions] = useState<BlockchainTransaction[]>([
-    {
-      id: '1',
-      hospital: 'Hospital C',
-      wallet: '0xabcd...ef01',
-      updateHash: '0x4b8a...7e3d',
-      timestamp: '2 min ago',
-    },
-    {
-      id: '2',
-      hospital: 'Hospital A',
-      wallet: '0x1234...5678',
-      updateHash: '0x7f3a...b92c',
-      timestamp: '5 min ago',
-    },
-    {
-      id: '3',
-      hospital: 'Hospital E',
-      wallet: '0x9876...5432',
-      updateHash: '0x6d9e...3f2a',
-      timestamp: '8 min ago',
-    },
-    {
-      id: '4',
-      hospital: 'Hospital B',
-      wallet: '0x8765...4321',
-      updateHash: '0x9e2c...4d1f',
-      timestamp: '12 min ago',
-    },
-    {
-      id: '5',
-      hospital: 'Hospital D',
-      wallet: '0x2468...1357',
-      updateHash: '0x2c5f...9a1b',
-      timestamp: '15 min ago',
-    },
-  ]);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
-  const handleConnect = () => {
-    setIsConnected(!isConnected);
-  };
+  const [transactions, setTransactions] = useState<BlockchainTransaction[]>([]);
+
+  const handleConnect = async () => {
+    const wallet = await connectWallet();
+      if (wallet) {
+        setWalletAddress(wallet.address);
+      }
+    };
 
   const handleTrainRound = async () => {
-    if (isTraining) return;
+    if (!walletAddress) {
+      alert("Connect wallet first");
+      return;
+    }
 
-    setIsTraining(true);
-    setIsPulsing(true);
+    try {
+      setIsTraining(true);
 
-    setHospitals((prev) =>
-      prev.map((h) => ({ ...h, status: 'training' as const }))
-    );
+      setIsPulsing(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+      const data = await trainRound(walletAddress);
 
-    const newAccuracies = hospitals.map((h) => ({
-      ...h,
-      accuracy: Math.min(99, h.accuracy + Math.random() * 2),
-      status: 'synced' as const,
-      lastUpdateHash: `0x${Math.random().toString(16).substr(2, 4)}...${Math.random().toString(16).substr(2, 4)}`,
-    }));
+      // update round
+      setCurrentRound(data.round);
 
-    setHospitals(newAccuracies);
+      // update global accuracy
+      setGlobalAccuracy(data.global_accuracy*100);
 
-    const avgAccuracy = newAccuracies.reduce((sum, h) => sum + h.accuracy, 0) / newAccuracies.length;
-    setGlobalAccuracy(Math.min(99, avgAccuracy + Math.random()));
+      // update hospitals
+      setHospitals(
+        data.hospitals.map((h) => ({
+          ...h,
+          accuracy: h.accuracy,
+        }))
+      );
 
-    setCurrentRound((prev) => prev + 1);
-    setTotalUpdates((prev) => prev + hospitals.length);
-    setBlockchainConfirmations((prev) => prev + hospitals.length);
+      // push blockchain tx
+      const newTx = {
+        id: Date.now().toString(),
+        hospital: "Global Aggregator",
+        wallet: walletAddress,
+        updateHash: data.txHash,
+        timestamp: "Just now",
+      };
 
-    const newTx: BlockchainTransaction = {
-      id: Date.now().toString(),
-      hospital: 'All Nodes',
-      wallet: '0xGlobal...Model',
-      updateHash: `0x${Math.random().toString(16).substr(2, 4)}...${Math.random().toString(16).substr(2, 4)}`,
-      timestamp: 'Just now',
-    };
-    setTransactions((prev) => [newTx, ...prev.slice(0, 4)]);
+      setTransactions((prev) => [newTx, ...prev]);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTraining(false);
+    }
 
-    setIsPulsing(false);
-    setIsTraining(false);
+    // 🔥 STOP GLOBE ANIMATION AFTER SHORT DELAY
+    setTimeout(() => {
+      setIsPulsing(false);
+    }, 800);
   };
+
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", (accounts: string[]) => {
+        setWalletAddress(accounts[0] || null);
+      });
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white overflow-x-hidden">
@@ -163,7 +98,7 @@ function App() {
 
       <Navbar
         currentRound={currentRound}
-        isConnected={isConnected}
+        walletAddress={walletAddress}
         onConnect={handleConnect}
       />
 

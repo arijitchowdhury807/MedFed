@@ -3,11 +3,11 @@ import { Activity, Wallet } from 'lucide-react';
 
 interface NavbarProps {
   currentRound: number;
-  isConnected: boolean;
+  walletAddress: string | null;
   onConnect: () => void;
 }
 
-export function Navbar({ currentRound, isConnected, onConnect }: NavbarProps) {
+export function Navbar({ currentRound, walletAddress, onConnect }: NavbarProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/30 border-b border-cyan-500/20">
       <div className="max-w-7xl mx-auto px-6 py-4">
@@ -49,13 +49,13 @@ export function Navbar({ currentRound, isConnected, onConnect }: NavbarProps) {
               whileTap={{ scale: 0.95 }}
               onClick={onConnect}
               className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium transition-all ${
-                isConnected
+                walletAddress
                   ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white'
                   : 'bg-white/10 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20'
               }`}
             >
               <Wallet className="w-4 h-4" />
-              <span>{isConnected ? '0x7a4f...b2c9' : 'Connect Wallet'}</span>
+              <span>{walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connect Wallet'}</span>
             </motion.button>
           </div>
         </div>

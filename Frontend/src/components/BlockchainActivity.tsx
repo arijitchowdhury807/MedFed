@@ -52,9 +52,14 @@ export function BlockchainActivity({ transactions }: BlockchainActivityProps) {
 
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-400">Hash:</span>
-                    <code className="text-xs text-cyan-400 font-mono bg-black/50 px-2 py-1 rounded truncate">
-                      {tx.updateHash}
-                    </code>
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${tx.updateHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-cyan-400 font-mono bg-black/50 px-2 py-1 rounded truncate hover:text-cyan-300 hover:bg-cyan-500/10 transition-all duration-200"
+                    >
+                      {tx.updateHash.slice(0, 10)}...{tx.updateHash.slice(-6)}
+                    </a>
                   </div>
                 </div>
               </div>

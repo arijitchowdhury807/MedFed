@@ -1,21 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-contract MedFed {
+contract ModelRegistry {
 
-    struct Update {
-        address hospital;
-        bytes32 weightHash;
-        uint256 contribution;
+    struct ModelUpdate {
+        string modelHash;
+        uint256 timestamp;
     }
 
-    Update[] public updates;
+    ModelUpdate[] public updates;
 
-    function submitUpdate(bytes32 _hash, uint256 _contribution) public {
-        updates.push(Update(msg.sender, _hash, _contribution));
+    function storeModelHash(string memory _hash) public {
+        updates.push(ModelUpdate(_hash, block.timestamp));
     }
 
-    function getUpdatesCount() public view returns(uint) {
+    function getUpdate(uint index) public view returns (string memory, uint256) {
+        ModelUpdate memory m = updates[index];
+        return (m.modelHash, m.timestamp);
+    }
+
+    function totalUpdates() public view returns (uint256) {
         return updates.length;
     }
 }
